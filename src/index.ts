@@ -3,17 +3,12 @@ import * as crypto from 'crypto-js'
 type Nullable<T> = T | null | undefined
 
 class Block {
-  public index: number
-  public hash: string
-  public prevHash: Nullable<string>
-  public data: string
-  public timestamp: number
   constructor(
-    index: number,
-    hash: string,
-    prevHash: string,
-    data: string,
-    timestamp: number
+    public index: number,
+    public hash: string,
+    public prevHash: Nullable<string>,
+    public data: string,
+    public timestamp: number
   ) {
     this.index = index
     this.hash = hash
@@ -21,7 +16,6 @@ class Block {
     this.data = data
     this.timestamp = timestamp
   }
-  // static method is not for instance(prototype)
   static makeHash = (
     index: number,
     prevHash: Nullable<string>,
@@ -41,9 +35,11 @@ class Block {
 }
 
 class BlockChain {
-  public storage: Block[]
-  constructor(storage: Block[] = []) {
+  constructor(private storage: Block[] = []) {
     this.storage = storage
+  }
+  get(): Block[] {
+    return this.storage
   }
   getLastBlock(): Nullable<Block> {
     const length = this.storage.length
@@ -51,6 +47,26 @@ class BlockChain {
       return this.storage[length - 1]
     }
     return null
+  }
+  makeBlock(data: string): Block {
+    const prevBlock: Block = this.getLastBlock()
+    const index: number = prevBlock ? prevBlock.index + 1 : 0
+    const prevHash: string = prevBlock ? prevBlock.hash : null
+    const timestamp: number = Block.makeTimestamp()
+    const hash: string = Block.makeHash(index, prevHash, data, timestamp)
+    const block: Block = new Block(index, hash, prevHash, data, timestamp)
+    this.addBlock(block)
+    return block
+  }
+  addBlock(target: Block): void {
+    const compared = this.getLastBlock()
+    if (BlockChain.isValidBlock(target, compared)) {
+      this.storage.push(target)
+      return
+    }
+    throw new Error(
+      'A block has been made, but not added to blockchain because it is invalid'
+    )
   }
   static getTargetHash = (target: Block): string =>
     Block.makeHash(target.index, target.prevHash, target.data, target.timestamp)
@@ -75,32 +91,10 @@ class BlockChain {
   }
 }
 
-const blockchain: storage{} = new BlockChain()
+const blockchain = new BlockChain()
 
-const addBlock = (target: Block): Block => {
-  const compared = blockchain.getLastBlock()
-  if (BlockChain.isValidBlock(target, compared)) {
-    blockchain.storage.push(target)
-    return target
-  }
-  throw new Error(
-    'A block has been made, but not added to blockchain because it is invalid'
-  )
-}
+blockchain.makeBlock('Bitcoin')
+blockchain.makeBlock('Ethereum')
+blockchain.makeBlock('Ripple')
 
-const makeBlock = (data: string): Block => {
-  const prevBlock: Block = blockchain.getLastBlock()
-  const index: number = prevBlock ? prevBlock.index + 1 : 0
-  const prevHash: string = prevBlock ? prevBlock.hash : null
-  const timestamp: number = Block.makeTimestamp()
-  const hash: string = Block.makeHash(index, prevHash, data, timestamp)
-  const block: Block = new Block(index, hash, prevHash, data, timestamp)
-  addBlock(block)
-  return block
-}
-
-makeBlock('Bitcoin')
-makeBlock('Ethereum')
-makeBlock('Ripple')
-
-console.log(blockchain.storage)
+console.log(blockchain.get())
